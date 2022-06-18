@@ -1,51 +1,60 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeFamilyDependencies #-}
 
-module MyLib (translate)
-where
+module MyLib (translate) where
 
-import Data.Text (Text)
-import qualified Data.Text as T
-import Data.Kind (Type)
 import Data.Functor ((<&>))
+import Data.Kind (Type)
+import Data.Text (Text)
+import qualified Data.Text as Tx
 
+validateInput :: (Int, Int) -> Int -> Either Text Text
+validateInput (low, high) input
+  | input >= low && input <= high = Right $ translateInput input
+  | otherwise =
+    Left $
+      Tx.unwords ["Invalid input. Number must be between", Tx.pack $ show low, "and", Tx.pack $ show high]
+
+-- TYPES
 data Units = Unit | Tens | Hundreds | Thousands
   deriving (Show, Eq, Ord, Bounded, Enum)
 
-data Unit = Unit_
-data Tens = Tens_
-data Hundreds = Hundreds_
-data Thousands = Thousands_
+-- Types representing units. Useful to create type class instances.
+data UnitT = UnitT
 
-class ToLetters a where
-  type I a
-  toLetters :: I a -> Text
+data TensT = TensT
+
+data HundredsT = HundredsT
+
+data ThousandsT = ThousandsT
 
 data Digit = Zero | One | Two | Three | Four | Five | Six | Seven | Eight | Nine
   deriving (Show, Eq, Ord, Bounded, Enum)
 
-instance ToLetters Thousands where
-  type I Thousands = Digit
-  toLetters = \case
+class Translate a where
+  type Input a
+  translate :: Input a -> Text
+
+instance Translate ThousandsT where
+  type Input ThousandsT = Digit
+  translate = \case
     Zero -> ""
-    d -> toLetters @Unit (d, False) <> " thousand"
+    d -> translate @UnitT (d, False) <> " thousand"
 
-instance ToLetters Hundreds where
-  type I Hundreds = Digit
-  toLetters = \case
+instance Translate HundredsT where
+  type Input HundredsT = Digit
+  translate = \case
     Zero -> ""
-    d -> toLetters @Unit (d, False ) <> " hundred"
+    d -> translate @UnitT (d, False) <> " hundred"
 
-instance ToLetters Tens where
-  type I Tens = (Digit, Digit)
-
-  toLetters (tens, unit) =
+instance Translate TensT where
+  type Input TensT = (Digit, Digit)
+  translate (tens, unit) =
     case tens of
-      Zero -> "" -- toLetters @Unit unit
+      Zero -> "" -- translate @Unit unit
       One -> toTens unit
       Two -> "twenty"
       Three -> "thirty"
@@ -68,9 +77,9 @@ instance ToLetters Tens where
         Eight -> "eigthteen"
         Nine -> "nineteen"
 
-instance ToLetters Unit where
-  type I Unit = (Digit, Bool)
-  toLetters (d, showZero) = case d of
+instance Translate UnitT where
+  type Input UnitT = (Digit, Bool)
+  translate (d, showZero) = case d of
     Zero -> if showZero then "zero" else ""
     One -> "one"
     Two -> "two"
@@ -82,70 +91,77 @@ instance ToLetters Unit where
     Eight -> "eigth"
     Nine -> "nine"
 
-translate :: Int -> Text
-translate input =
-  let inputParsed = toUnits input
+-- TRANSLATOR
+translateInput :: Int -> Text
+translateInput input =
+  let inputParsed = parseNumber input
 
       (unitDigit, _) = last inputParsed
 
       translate' :: (Maybe Units, Bool, Text) -> (Digit, Units) -> (Maybe Units, Bool, Text)
-      translate' (isBig, translateUnit, n) (d, u) = case u of
-            Thousands -> (if d /= Zero then Just Thousands else Nothing,
-                          translateUnit,
-                          toLetters @Thousands d
-                         )
-            Hundreds -> (if d /= Zero
-                         then maximum [isBig, Just Hundreds]
-                         else isBig,
-                         translateUnit,
-                         n <> (if n /= "" && d /= Zero then " " else "") <> toLetters @Hundreds d
-                        )
-            Tens -> case toLetters @Tens (d, unitDigit) of
-              "" -> (isBig, translateUnit, n)
-              x -> (Just Tens,
-                    d /= One,
-                    case isBig of
-                      Nothing -> x
-                      Just _ -> n <> " and " <> x
-                   )
-            Unit ->
-              if translateUnit
-                then
-                  (isBig,
-                   translateUnit,
-                   n <> case isBig of
-                     Nothing -> toLetters @Unit (d, True)
-                     Just Tens -> letteriseIfNotZero "-" d
-                     Just Hundreds -> letteriseIfNotZero " and " d
-                     Just Thousands -> letteriseIfNotZero " and " d
-                  )
-                else (isBig, translateUnit, n)
+      translate' (munit, translateUnit, n) (d, u) = case u of
+        Thousands ->
+          ( if d /= Zero then Just Thousands else Nothing,
+            translateUnit,
+            translate @ThousandsT d
+          )
+        Hundreds ->
+          ( if d /= Zero
+              then maximum [munit, Just Hundreds]
+              else munit,
+            translateUnit,
+            n <> (if n /= "" && d /= Zero then " " else "") <> translate @HundredsT d
+          )
+        Tens
+          | d == Zero -> (munit, translateUnit, n)
+          | otherwise ->
+            ( Just Tens,
+              d /= One,
+              case munit of
+                Nothing -> translate @TensT (d, unitDigit)
+                Just _ -> n <> " and " <> translate @TensT (d, unitDigit)
+            )
+        Unit ->
+          if translateUnit
+            then
+              ( munit,
+                translateUnit,
+                n <> case munit of
+                  Nothing -> translate @UnitT (d, True)
+                  Just Tens -> letteriseIfNotZero "-" d
+                  Just Hundreds -> letteriseIfNotZero " and " d
+                  Just Thousands -> letteriseIfNotZero " and " d
+                  -- It cannot happen but has to be included for the pattern-match
+                  -- to be exhaustive
+                  Just Unit -> ""
+              )
+            else (munit, translateUnit, n)
 
       letteriseIfNotZero delim = \case
         Zero -> ""
-        d -> delim <> toLetters @Unit (d, False)
+        d -> delim <> translate @UnitT (d, False)
 
-      (_, _, n) = foldl translate' (Nothing, True, T.empty) inputParsed
-  in n
+      (_, _, inputTranslated) = foldl translate' (Nothing, True, "") inputParsed
+   in inputTranslated
 
-class ToPowerOfTen a where
-  toPowerOfTen :: a -> Int
+-- PARSER
+class AsPowerOfTen a where
+  asPowerOfTen :: a -> Int
 
-instance ToPowerOfTen Units where
-  toPowerOfTen = \case
+instance AsPowerOfTen Units where
+  asPowerOfTen = \case
     Unit -> 1
     Tens -> 10
     Hundreds -> 100
     Thousands -> 1000
 
-toUnits :: Int -> [(Digit, Units)]
-toUnits input = toUnits' [] input Thousands
+parseNumber :: Int -> [(Digit, Units)]
+parseNumber input = parseNumber' [] input Thousands
   where
-    toUnits' :: [(Digit, Units)] -> Int -> Units -> [(Digit, Units)]
-    toUnits' res x unit =
-      let (quot, rem) = x `divMod` toPowerOfTen unit
+    parseNumber' :: [(Digit, Units)] -> Int -> Units -> [(Digit, Units)]
+    parseNumber' res x unit =
+      let (quot, rem) = x `divMod` asPowerOfTen unit
           res' = res <> [(toEnum @Digit quot, unit)]
-
-      in if minBound == unit
-        then res'
-        else toUnits' res' rem (pred unit)
+       in if minBound == unit
+            then res'
+            else parseNumber' res' rem (pred unit)
