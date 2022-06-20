@@ -1,0 +1,38 @@
+name: signal
+version: '0.1.0.0'
+author: Stefano
+maintainer: futtetennista@pm.me
+extra-source-files:
+- README.md
+- stack.yaml
+ghc-options:
+- -Wall
+- -fwarn-tabs
+- -fwarn-incomplete-uni-patterns
+- -fwarn-incomplete-record-updates
+# workaround [Filename case on macOS · Issue #4739 · haskell/cabal](https://github.com/haskell/cabal/issues/4739)
+- -optP-Wno-nonportable-include-path
+dependencies:
+- base
+- Cabal
+- text
+library:
+  source-dirs: src/
+  exposed-modules:
+  - SignalAI.Translate
+executables:
+  stack:
+    main: Main.hs
+    source-dirs: app/
+    dependencies:
+    - signal
+tests:
+  stack-test:
+    main: Main.hs
+    source-dirs: test/
+    dependencies:
+    - QuickCheck
+    - signal
+    - tasty
+    - tasty-hunit
+    - tasty-quickcheck
