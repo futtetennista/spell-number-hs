@@ -1,8 +1,22 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
+
 module Main where
 
-import qualified MyLib (someFunc)
+import SignalAI.Translate (numberToLetters)
+import Prelude
+import Text.Read (readMaybe)
+import qualified Data.Text as Tx
 
 main :: IO ()
-main = do
-  putStrLn "Hello, Haskell!"
-  MyLib.someFunc
+main = loop
+  where
+    loop = do
+      putStrLn "Enter a number:"
+      maybeNumber <- readMaybe @Int <$> getLine
+      case maybeNumber of
+        Nothing -> putStrLn "Please enter a number between [1, 1000]"
+        Just n -> either putText putText (numberToLetters n)
+      loop
+
+    putText = putStrLn . Tx.unpack
