@@ -13,9 +13,8 @@ import Data.Text (Text)
 import qualified Data.Text as Tx
 
 numberToLetters :: Int -> Either Text Text
-numberToLetters input = do
-  _ <- validateInput (1, 1_000) input
-  pure $ translateInput input
+numberToLetters input =
+  translateInput input <$ validateInput (1, 1_000) input
 
 validateInput :: (Int, Int) -> Int -> Either Text ()
 validateInput (low, high) input
@@ -33,14 +32,14 @@ validateInput (low, high) input
 data Units = Unit | Tens | Hundreds | Thousands
   deriving (Show, Eq, Ord, Bounded, Enum)
 
--- Types representing units. Useful to create type class instances.
-data UnitT -- = UnitT
+-- Unhabited types representing units. Useful to create type class instances.
+data UnitT
 
-data TensT -- = TensT
+data TensT
 
-data HundredsT -- = HundredsT
+data HundredsT
 
-data ThousandsT -- = ThousandsT
+data ThousandsT
 
 data Digit = Zero | One | Two | Three | Four | Five | Six | Seven | Eight | Nine
   deriving (Show, Eq, Ord, Bounded, Enum)
@@ -120,11 +119,6 @@ instance Translate UnitT where
 translateInput :: Int -> Text
 translateInput =
   (\x -> if x == "" then "zero" else x) . snd . foldr translateR ([], Tx.empty) . parseNumber
-  -- let inputParsed = parseNumber input
-      -- This pattern match is safe because the input will always be non-empty
-      -- (unitDigit, _) = last inputParsed
-      -- (_, _, inputTranslated) = foldl (translateL unitDigit) (Nothing, False, "") inputParsed
-  --  in inputTranslated
 
 translateR :: (Digit, Units) -> ([Digit], Text) -> ([Digit], Text)
 translateR (d, u) (prevDigit, xs) =
@@ -139,56 +133,6 @@ translateR (d, u) (prevDigit, xs) =
       | y == "" = x
       | usingSpace = x <> " " <> y
       | otherwise = x <> " and " <> y
-
--- translateL ::
---   Digit ->
---   (Maybe Units, Bool, Text) ->
---   (Digit, Units) ->
---   (Maybe Units, Bool, Text)
--- translateL unitDigit (previousUnits, skipSingleDigit, n) (d, u) =
---   case u of
---     Thousands ->
---       ( if d /= Zero then Just Thousands else Nothing,
---         skipSingleDigit,
---         translate @ThousandsT d
---       )
---     Hundreds ->
---       ( if d /= Zero
---           then maximum [previousUnits, Just Hundreds]
---           else previousUnits,
---         skipSingleDigit,
---         case previousUnits of
---           Nothing -> n <> translate @HundredsT d
---           Just _ -> if d /= Zero then n <> " " <> translate @HundredsT d else n
---       )
---     Tens
---       | d == Zero -> (previousUnits, skipSingleDigit, n)
---       | otherwise ->
---         ( Just Tens,
---           d == One,
---           case previousUnits of
---             Nothing -> translate @TensT (d, unitDigit)
---             Just _ -> n <> " and " <> translate @TensT (d, unitDigit)
---         )
---     Unit ->
---       if skipSingleDigit
---         then (previousUnits, skipSingleDigit, n)
---         else
---           ( previousUnits,
---             skipSingleDigit,
---             n <> case previousUnits of
---               Nothing -> translate @UnitT (d, True)
---               Just Tens -> letteriseIfNotZero "-" d
---               Just Hundreds -> letteriseIfNotZero " and " d
---               Just Thousands -> letteriseIfNotZero " and " d
---               -- It cannot happen but has to be included for the pattern-match
---               -- to be exhaustive
---               Just Unit -> ""
---           )
---   where
---     letteriseIfNotZero delim = \case
---       Zero -> ""
---       d -> delim <> translate @UnitT (d, False)
 
 -- PARSER
 class AsPowerOfTen a where

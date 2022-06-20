@@ -21,13 +21,13 @@ library:
   exposed-modules:
   - SignalAI.Translate
 executables:
-  stack:
+  signal:
     main: Main.hs
     source-dirs: app/
     dependencies:
     - signal
 tests:
-  stack-test:
+  signal-test:
     main: Main.hs
     source-dirs: test/
     dependencies:
