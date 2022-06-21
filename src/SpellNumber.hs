@@ -1,6 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
@@ -22,10 +22,10 @@ validateInput (low, high) input
   | otherwise =
     Left $
       Tx.unwords
-        ["Invalid input. Number must be between",
-         Tx.pack $ show low,
-         "and",
-         Tx.pack $ show high
+        [ "Invalid input. Number must be between",
+          Tx.pack $ show low,
+          "and",
+          Tx.pack $ show high
         ]
 
 -- TYPES

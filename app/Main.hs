@@ -3,10 +3,10 @@
 
 module Main where
 
-import SpellNumber (spellNumber)
-import Prelude
-import Text.Read (readMaybe)
 import qualified Data.Text as Tx
+import SpellNumber (spellNumber)
+import Text.Read (readMaybe)
+import Prelude
 
 main :: IO ()
 main = loop
