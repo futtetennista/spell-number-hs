@@ -6,15 +6,15 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module SignalAI.Translate (numberToLetters, validateInput) where
+module SpellNumber (spellNumber) where
 
 import Data.Kind (Type)
 import Data.Text (Text)
 import qualified Data.Text as Tx
 
-numberToLetters :: Int -> Either Text Text
-numberToLetters input =
-  translateInput input <$ validateInput (1, 1_000) input
+spellNumber :: Int -> Either Text Text
+spellNumber input =
+  spellNumber' input <$ validateInput (1, 1_000) input
 
 validateInput :: (Int, Int) -> Int -> Either Text ()
 validateInput (low, high) input
@@ -44,32 +44,32 @@ data ThousandsT
 data Digit = Zero | One | Two | Three | Four | Five | Six | Seven | Eight | Nine
   deriving (Show, Eq, Ord, Bounded, Enum)
 
-class Translate a where
+class SpellUnit a where
   type Input a :: Type
 
-  translate :: Input a -> Text
+  spellUnit :: Input a -> Text
 
-instance Translate ThousandsT where
+instance SpellUnit ThousandsT where
   type Input ThousandsT = Digit
 
-  translate :: Digit -> Text
-  translate = \case
+  spellUnit :: Digit -> Text
+  spellUnit = \case
     Zero -> ""
-    d -> translate @UnitT (d, False) <> " thousand"
+    d -> spellUnit @UnitT (d, False) <> " thousand"
 
-instance Translate HundredsT where
+instance SpellUnit HundredsT where
   type Input HundredsT = Digit
 
-  translate :: Digit -> Text
-  translate = \case
+  spellUnit :: Digit -> Text
+  spellUnit = \case
     Zero -> ""
-    d -> translate @UnitT (d, False) <> " hundred"
+    d -> spellUnit @UnitT (d, False) <> " hundred"
 
-instance Translate TensT where
+instance SpellUnit TensT where
   type Input TensT = (Digit, Digit)
 
-  translate :: (Digit, Digit) -> Text
-  translate (d, u) =
+  spellUnit :: (Digit, Digit) -> Text
+  spellUnit (d, u) =
     case d of
       Zero -> ""
       One -> toTens u
@@ -85,7 +85,7 @@ instance Translate TensT where
       appendUnitIfNotZero t =
         if u == Zero
           then t
-          else t <> "-" <> translate @UnitT (u, False)
+          else t <> "-" <> spellUnit @UnitT (u, False)
 
       toTens = \case
         Zero -> "ten"
@@ -99,12 +99,12 @@ instance Translate TensT where
         Eight -> "eigthteen"
         Nine -> "nineteen"
 
-instance Translate UnitT where
+instance SpellUnit UnitT where
   type Input UnitT = (Digit, Bool)
 
-  translate :: (Digit, Bool) -> Text
-  translate (d, translateZero) = case d of
-    Zero -> if translateZero then "zero" else ""
+  spellUnit :: (Digit, Bool) -> Text
+  spellUnit (d, spellZero) = case d of
+    Zero -> if spellZero then "zero" else ""
     One -> "one"
     Two -> "two"
     Three -> "three"
@@ -116,17 +116,17 @@ instance Translate UnitT where
     Nine -> "nine"
 
 -- TRANSLATOR
-translateInput :: Int -> Text
-translateInput =
-  (\x -> if x == "" then "zero" else x) . snd . foldr translateR ([], Tx.empty) . parseNumber
+spellNumber' :: Int -> Text
+spellNumber' =
+  (\x -> if x == "" then "zero" else x) . snd . foldr spellNumberR ([], Tx.empty) . parseNumber
 
-translateR :: (Digit, Units) -> ([Digit], Text) -> ([Digit], Text)
-translateR (d, u) (prevDigit, xs) =
+spellNumberR :: (Digit, Units) -> ([Digit], Text) -> ([Digit], Text)
+spellNumberR (d, u) (prevDigit, xs) =
   case u of
-    Unit -> ([d], translate @UnitT (d, False))
-    Tens -> ([d], if d == Zero then xs else translate @TensT (d, head prevDigit))
-    Hundreds -> ([d], let x = translate @HundredsT d in join False x xs)
-    Thousands -> ([d], let x = translate @ThousandsT d in join (prevDigit /= [Zero]) x xs)
+    Unit -> ([d], spellUnit @UnitT (d, False))
+    Tens -> ([d], if d == Zero then xs else spellUnit @TensT (d, head prevDigit))
+    Hundreds -> ([d], let x = spellUnit @HundredsT d in join False x xs)
+    Thousands -> ([d], let x = spellUnit @ThousandsT d in join (prevDigit /= [Zero]) x xs)
   where
     join usingSpace x y
       | x == "" = y

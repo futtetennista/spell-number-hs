@@ -3,7 +3,7 @@
 
 module Main where
 
-import SignalAI.Translate (numberToLetters)
+import SpellNumber (spellNumber)
 import Prelude
 import Text.Read (readMaybe)
 import qualified Data.Text as Tx
@@ -16,7 +16,7 @@ main = loop
       maybeNumber <- readMaybe @Int <$> getLine
       case maybeNumber of
         Nothing -> putStrLn "Please enter a number between [1, 1000]"
-        Just n -> either putText putText (numberToLetters n)
+        Just n -> either putText putText (spellNumber n)
       loop
 
     putText = putStrLn . Tx.unpack

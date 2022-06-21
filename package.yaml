@@ -1,4 +1,4 @@
-name: signal
+name: spell-number
 version: '0.1.0.0'
 author: Stefano
 maintainer: futtetennista@pm.me
@@ -19,20 +19,20 @@ dependencies:
 library:
   source-dirs: src/
   exposed-modules:
-  - SignalAI.Translate
+  - SpellNumber
 executables:
-  signal:
+  spell-number:
     main: Main.hs
     source-dirs: app/
     dependencies:
-    - signal
+    - spell-number
 tests:
-  signal-test:
+  spell-number-test:
     main: Main.hs
     source-dirs: test/
     dependencies:
     - QuickCheck
-    - signal
+    - spell-number
     - tasty
     - tasty-hunit
     - tasty-quickcheck

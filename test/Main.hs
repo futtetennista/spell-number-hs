@@ -9,7 +9,7 @@ module Main (main) where
 import qualified Test.Tasty as T
 import qualified Test.Tasty.QuickCheck as QC
 import qualified Test.Tasty.HUnit as H
-import SignalAI.Translate (numberToLetters)
+import SpellNumber (spellNumber)
 import Data.Either (isRight, isLeft, fromRight)
 import Data.Coerce (coerce)
 import qualified Data.Text as Tx
@@ -44,25 +44,25 @@ instance QC.Arbitrary LessThanHundred where
 tests :: T.TestTree
 tests =
   T.testGroup "Tests" [
-    H.testCase "Test it returns a translation" do
-      numberToLetters 100 H.@?= Right "one hundred",
+    H.testCase "Test it returns a spelled number" do
+      spellNumber 100 H.@?= Right "one hundred",
 
-    QC.testProperty "Valid number is always translated"
-      (isRight . numberToLetters . coerce @Valid @Int),
+    QC.testProperty "Valid number is always spelled"
+      (isRight . spellNumber . coerce @Valid @Int),
 
-    QC.testProperty "Invalid number is never translated"
-      (isLeft . numberToLetters . coerce @Invalid @Int),
+    QC.testProperty "Invalid number is never spelled"
+      (isLeft . spellNumber . coerce @Invalid @Int),
 
     QC.testProperty "'and' appears at most once" \n ->
-      let translation = fromRight "unexpected" $ numberToLetters (coerce @Valid n)
-          ands = filter (== "and") $ Tx.words translation
+      let spelledNumber = fromRight "unexpected" $ spellNumber (coerce @Valid n)
+          ands = filter (== "and") $ Tx.words spelledNumber
        in null ands || length ands == 1,
 
     QC.testProperty "The word 'hundred' appears when it should" \n ->
-      let translation = fromRight "unexpected" $ numberToLetters $ coerce @Hundreds n
-       in filter (== "hundred") (Tx.words translation) == ["hundred"],
+      let spelledNumber = fromRight "unexpected" $ spellNumber $ coerce @Hundreds n
+       in filter (== "hundred") (Tx.words spelledNumber) == ["hundred"],
 
     QC.testProperty "The word 'hundred' never appears when it should not" \n ->
-      let translation = fromRight "unexpected" $ numberToLetters $ coerce @LessThanHundred n
-       in "hundred" `notElem` Tx.words translation
+      let spelledNumber = fromRight "unexpected" $ spellNumber $ coerce @LessThanHundred n
+       in "hundred" `notElem` Tx.words spelledNumber
   ]
