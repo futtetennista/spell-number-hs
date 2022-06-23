@@ -1,5 +1,7 @@
 # README
 
+A simple command-line program that spells numbers from 0 to 1000.
+
 ## Running the command line program
 
 - Install the [stack](https://docs.haskellstack.org/en/stable/install_and_upgrade/)
